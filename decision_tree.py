@@ -1,110 +1,126 @@
 import math
-import copy
 
-class Node(object):
-    root = None
-    children = []
-    category = None
+class Node:
+    left = None
+    right = None
 
-class D(object):
+    def __init__(self, name, category):
+        self.name = name
+        self.category = category
 
-    def __init__(self, rid, age, income, is_student, rating, buys):
-        self.rid = rid
-        self.age = age
-        self.income = income
-        self.is_student = is_student
-        self.rating = rating 
-        self.buys = buys
-    
-    def __repr__(self):
-        return 'rid {}, buys {}'.format(self.rid, self.buys)
+# 测试数据集，见<Data Mining Concepts and Techniques> 2nd edition P299
+D = [
+    {'rid':1,'age':'youth','income':'high','student':'no','credit_rating':'fair','category':'no'},
+    {'rid':2,'age':'youth','income':'high','student':'no','credit_rating':'excellent','category':'no'},
+    {'rid':3,'age':'middle_aged','income':'high','student':'no','credit_rating':'fair','category':'yes'},
+    {'rid':4,'age':'senior','income':'medium','student':'no','credit_rating':'fair','category':'yes'},
+    {'rid':5,'age':'senior','income':'low','student':'yes','credit_rating':'fair','category':'yes'},
+    {'rid':6,'age':'senior','income':'low','student':'yes','credit_rating':'excellent','category':'no'},
+    {'rid':7,'age':'middle_aged','income':'low','student':'yes','credit_rating':'excellent','category':'yes'},
+    {'rid':8,'age':'youth','income':'medium','student':'no','credit_rating':'fair','category':'no'},
+    {'rid':9,'age':'youth','income':'low','student':'yes','credit_rating':'fair','category':'yes'},
+    {'rid':10,'age':'senior','income':'medium','student':'yes','credit_rating':'fair','category':'yes'},
+    {'rid':11,'age':'youth','income':'medium','student':'yes','credit_rating':'excellent','category':'yes'},
+    {'rid':12,'age':'middle_aged','income':'medium','student':'no','credit_rating':'excellent','category':'yes'},
+    {'rid':13,'age':'middle_aged','income':'high','student':'yes','credit_rating':'fair','category':'yes'},
+    {'rid':14,'age':'senior','income':'medium','student':'no','credit_rating':'excellent','category':'no'}
+]
+attr_list = ['age', 'income', 'student', 'credit_rating']
+attr_val_list = {'age': ['youth', 'middle_aged', 'senior'],
+                 'income': ['high', 'medium', 'low'],
+                 'student': ['yes', 'no'],
+                 'credit_rating': ['fair', 'excellent']}
+cate_list = ['yes', 'no'] # class 列表
 
-attr_list = []
-data = tuple()
-CATEGORY = ['Y', 'N'] # class label
-ANOMALY_CATE = []
-ANOMALY_ATTR = []
-ATTR_LIST = {'age':['youth', 'middle', 'senior'], 'income':['high', 'medium', 'low']} # attr list
-
-def is_same_category(data):
-    category = None
-    if data:
-        category == data[0].category
-
-    for d in data:
-        if d.category != category:
-            return False
-    return True
-
-# calculate info of D
-def _info(data):
-    data_len = len(data)
-    count = {}
-    for c in CATEGORY:
-        count.update({c:0})
-    for d in data:
-        if d.category in CATEGORY:
-            count[str(d.category)] += 1
-        else: # 记录异常分类的数据
-            ANOMALY_CATE.append(d)
-    info = 0
-    for k,v in count.items():
-        p = v/data_len
-        info = info +  -p * math.log(p, 2)
-    return info
-
-def _info_a(data, attr):
-    data_len = len(data)
-    info_a = 0
-    subdata = {}
-    for v in ATTR_LIST[attr]:
-        subdata.update({str(v):[]})
-    for d in data:
-        if d[attr] in subdata:
-            subdata[d[attr]].append(d)
-        else:
-            ANOMALY_ATTR.append(d)
-    for k, v in subdata.items():
-        sub_len = len(v)
-        info_a = info_a + sub_len/data_len * _info(v)
-    return info_a
-
-# $todo: 目前还是单节点select, 递归的时候需要考虑sub_attr的pop问题
-def attr_select(data, method):
-    if method == 'gain_info':
-        sub_attr = copy.deepcopy(ATTR_LIST)
-        count = gain_info(data, sub_attr)
-        max_gain = 0
-        max_gain_attr = None
-        for c in count:
-            if max_gain < count[c]:
-                max_gain = count[c]
-                max_gain_attr = c
-        return max_gain_attr
-    else:
-        return None
-    
-# attribute selection methods - used in ID3
-# 需要sub_attr用于递归调用，否则会子树重复遍历某个属性
-# info gain 定义: gain(D, attr) = info(D) - info_a(D,attr)
-# 由于info(D)都一样，所以无需计算。只要info_a(D, attr)最小，则gain最大
-def gain_info(data, sub_attr):
-    # sub_attr = copy.deepcopy(ATTR_LIST)
-    count = {} # {attr: info_a}
-    for k in sub_attr:
-        count.update({k:0})
-    for c in count:
-        count[c] = _info_a(data, c) * -1 # 乘以-1使顺序倒置，保证选max_gain的逻辑正确
-    return count
-    
-# attribute selection methods - used in C4.5
-def gain_ratio(data, attr_list):
+def attr_selection_method(D, attr_list):
     pass
 
-# attribute selection methods
-def gini_index(data, attr_list):
+# info - i.e. entropy
+# info(D) = -accmulate_sum(pi/log_2(pi)) for i = 1:m
+# where pi = |C_i,D|/|D|, C_i,D is the tuple in D with class C_i
+def _info(D, cate_list):
+    count = {}
+    d_len = len(D)
+    entropy = 0
+    for cate in cate_list:
+        count.update({cate:0})
+    for item in D:
+        count[item['category']] += 1
+    for k, v in count.items():
+        if v != 0:
+            entropy += (-1 * v/d_len * math.log(v/d_len, 2))
+    return entropy
+    
+# info_a
+# info_a(D) = accumulate_sum(|Dj|/|D|*info(Dj)) for j = 1:v
+# where a refer to the attr to be calculated
+def _info_a(D, attr, attr_val):
+    d_len = len(D)
+    count = {} #{attr1: [subdata], attr2:..}
+    info_a = 0
+    for v in attr_val:
+        count.update({v: []})
+
+    for item in D:
+        count[item[attr]].append(item)
+    
+    for k, v in count.items():
+        info_a += len(v)/d_len * _info(v, cate_list)
+    
+    return info_a
+    
+# gain(A) = info(D) - info_a(D)
+def _gain_info(D, attr):
+    return _info(D, cate_list) - _info_a(D, attr, attr_val_list[attr])
+
+def _gain_ratio():
+    pass
+
+def _gini_index():
     pass
 
 def generate_decision_tree(D, attr_list):
     pass
 
+# scan之前判断D是否为空
+def is_same_category(D):
+    category = D[0].category
+    for item in D:
+        if item['category'] == category:
+            continue
+        else:
+            return False
+    return True
+
+def majority_category(D, cate_list):
+    count = {}
+    max_count = 0
+    cate = None
+
+    for cate in cate_list:
+        count.update({cate:0})
+
+    for item in D:
+        count[item['category']] += 1
+
+    for k, v in count.items():
+        if v > max_count:
+            cate = k
+            max_count = v
+    
+    return cate
+
+def process():
+    pass
+    # N = None
+    # attr_list = []
+    # if not D:
+    #     raise ValueError("Empty dataset D")
+    # if is_same_category(D):
+    #     N = Node('leaf', D[0].category)
+    #     return N
+    
+if __name__ == "__main__":
+    for attr in attr_list:
+        print(attr, _gain_info(D, attr))
+    # print(_gain_info(D, 'age'))
