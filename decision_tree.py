@@ -73,12 +73,53 @@ def _info_a(D, attr, attr_val):
 def _gain_info(D, attr):
     return _info(D, cate_list) - _info_a(D, attr, attr_val_list[attr])
 
-def _gain_ratio():
-    pass
+# used in C4.5
+# to overcome the bias of gain_info: prefer to select attr having large number of values
+# split_info_a(D) = -accumulate_sum(|Dj|/|D|*log_2(|Dj|/|D|))
+# errata:<Data Mining Concepts and techniques> 2nd edition p301, split_info_a(income) give a wrong answer
+def _split_info_a(D, attr, attr_val):
+    d_len = len(D)
+    count = {} #{attr1: [subdata], attr2:..}
+    split_info_a = 0
+    for v in attr_val:
+        count.update({v: 0})
 
-def _gini_index():
-    pass
+    for item in D:
+        count[item[attr]] += 1
+    print(count)
+    for k, v in count.items():
+        # print(k + ":" + str(len(v)))
+        split_info_a += (-1 * v/d_len * math.log(v/d_len, 2))
+    
+    return split_info_a
 
+
+# used in C4.5
+# to overcome the bias of gain_info: prefer to select attr having large number of values
+def _gain_ratio(D, attr):
+    return _gain_info(D, attr)/_split_info_a(D, attr, attr_val_list[attr])
+
+# used in CART
+# gini_index(D) = 1 - accumulate_sum(pi^2) for i = 1:m
+# where i refer to outcome category and pi = |C_i,D|/|D|
+# gini index 用于对attr的二元分类
+# {low, medium, high}的分类会变成{low, medium}&{high} + {low, high}&{medium} + etc.
+# 根据两个类别计算gini
+def _gini_index(D):
+    count = {}
+    d_len = len(D)
+    gini_v = 0
+    for cate in cate_list:
+        count.update({cate:0})
+    for item in D:
+        count[item['category']] += 1
+    for k, v in count.items():
+        gini_v +=  (v/d_len)**2
+    return 1 - gini_v
+
+def gini_index_a(D, attr):
+    pass
+    
 def generate_decision_tree(D, attr_list):
     pass
 
@@ -121,6 +162,8 @@ def process():
     #     return N
     
 if __name__ == "__main__":
-    for attr in attr_list:
-        print(attr, _gain_info(D, attr))
+    print(_gini_index(D))
+    # for attr in attr_list:
+        # print(attr, _split_info_a(D, attr, attr_val_list[attr]))
+        # print(attr, _gain_ratio(D, attr))
     # print(_gain_info(D, 'age'))
