@@ -119,7 +119,7 @@ def _gini_index(D):
 
 def gini_index_a(D, attr):
     pass
-    
+
 def generate_decision_tree(D, attr_list):
     pass
 
@@ -167,3 +167,4 @@ if __name__ == "__main__":
         # print(attr, _split_info_a(D, attr, attr_val_list[attr]))
         # print(attr, _gain_ratio(D, attr))
     # print(_gain_info(D, 'age'))
+    
